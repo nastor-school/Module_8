@@ -3,40 +3,37 @@ package concur;
 import java.util.Random;
 
 class SumClass extends Thread {
-	public int origin;
+	public int start;
 	public int end;
 	
 	// Constructor to set origin
-	// @param origin lowerbound for thread to review sumArr
-	public SumClass(int origin) {
-		this.origin = origin;
-		this.end = origin + 1000000;
+	// @param start lowerbound for thread to review sumArr
+	// @param end uppperbound for thread to review sumArr
+	public SumClass(int start, int end) {
+		this.start = start;
+		this.end = end;
 	}
 	
 	// Code for thread to run
 	// Counts sum for threads slice of sumArr and increments total
 	public void run() {
 		int sum = 0;
-		for (int x = origin; x < end; x++) {
+		
+		for (int x = start; x < end; x++) {
 			sum += Concurrency.sumArr[x];
 		}
 		
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
 		Concurrency.incrementTotal(sum);
+		
 	}
 }
 
 public class Concurrency {
+	private static int total;
+	private static long time;
 	// Create 200 million length array with random integers 1 - 10
 	static Random random = new Random();
 	public static int[] sumArr = random.ints(200000000,1,11).toArray();
-	// Set total variable to 0
-	public static int total = 0;
 
 	public static void main(String[] args) {
 		// Start the counter for multiple threads
@@ -46,7 +43,7 @@ public class Concurrency {
 		SumClass[] threadArr = new SumClass[200];
 		// Creating and starting threads
 		for (int x = 0; x < threadArr.length; x++) {
-			threadArr[x] = new SumClass(x * 1000000);
+			threadArr[x] = new SumClass(x * 1000000, (x * 1000000) + 1000000);
 			threadArr[x].start();
 		}
 		
@@ -64,29 +61,27 @@ public class Concurrency {
 		
 		// Printing results
 		System.out.println("Multiple Threads | Time: " + multiThreadTime + " | Total: " + total);
-		
+	
 		// Restarting to review single thread
-		total = 0;
+		clearTotal();
 		startTime = System.nanoTime();
 		
-		// Reviewing every element in sumArr and incrementing total
-		for (int x = 0; x < sumArr.length; x++) {
-			incrementTotal(sumArr[x]);
+		SumClass single = new SumClass(0, 200000000);
+		single.start();
+		try {
+			single.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
-		
-		// Ending counter and evaluating time
 		endTime = System.nanoTime();
 		long singleThreadTime = endTime - startTime;
 		
 		// Printing results
 		System.out.println("Single Thread | Time: " + singleThreadTime + " | Total: " + total);
 		
-		
 		// Printing some metrics
-		System.out.println("Difference in thread time: " + (singleThreadTime - multiThreadTime) + " nanoseconds.");
-		System.out.println("Single thread took roughly " + (singleThreadTime / multiThreadTime) + " times longer!");
+		System.out.println("Difference in thread time: " + (multiThreadTime - singleThreadTime) + " nanoseconds.");
 	}
-	
 	
 	// Increments total variable 
 	// Is synchronized so that multiple threads can access without race condition
@@ -94,5 +89,9 @@ public class Concurrency {
 	public static synchronized void incrementTotal(int increment) {
 		total += increment;
 	}
-
+	
+	// Sets total to 0
+	public static void clearTotal() {
+		total = 0;
+	}
 }
